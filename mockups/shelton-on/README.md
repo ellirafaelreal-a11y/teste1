@@ -83,7 +83,17 @@ Pipeline: `art.py` gera os vetores (glifos convertidos em curvas com fontTools),
 volume por distância à borda, oclusão nas axilas, brilho no tecido preto e trama de malha.
 A estampa é deslocada pelo relevo das dobras e recebe a mesma luz do tecido.
 
-## Foto de campanha (IA)
+## Mockups realistas (IA)
+
+`output/10-mockups-realistas.png` junta as três fotos geradas na Higgsfield (Nano Banana 2.1):
+
+- `higgsfield/hf-02-campaign.png`: treino 02, em quadra
+- `higgsfield/hf-03-shelton-lifestyle.png`: lifestyle 03 (shelton com On horizontal), num café
+- `higgsfield/hf-07-fonseca-vertical.png`: lifestyle 07 (FONSECA vertical nas costas), no calçadão de Copacabana
+
+As pessoas são fictícias e aparecem sem rosto. As referências enviadas estão em `higgsfield/refs/`.
+
+### Foto de campanha (IA)
 
 `higgsfield/hf-02-campaign.png` é uma foto de campanha do conceito 02 (1856 × 2304), gerada
 na Higgsfield com o modelo Nano Banana 2.1. As referências enviadas estão em
