@@ -8,3 +8,4 @@ out
 
 # mockup pipeline intermediates
 mockups/shelton-on/build
+__pycache__/
