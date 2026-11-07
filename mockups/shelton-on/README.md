@@ -8,13 +8,28 @@ substituído pelo logo da On.
 | 01 | **Baseline** | Undyed White / tinta preta | `shelt` + símbolo On, 190 × 73 mm | Mapa de quadra em escala ITF com o slice canhoto no lado da vantagem |
 | 02 | **Call Ended.** | Black / branco + lime | `SHELT` branco + símbolo On lime, 250 × 91 mm | "CALL ENDED.", referência à comemoração de desligar o telefone |
 
+### Lifestyle com o On na horizontal
+
+| | Atleta | Cor | Frente | Nuca |
+| --- | --- | --- | --- | --- |
+| 03 | **shelton** | Ecru / navy + On laranja | `shelt` + o + n em linha, 232 × 52 mm | Símbolo On + "BEN SHELTON / FLORIDA, USA" |
+| 04 | **fonseca** | Forest / ecru + On amarelo canário | `f` + o + n + `seca`, 244 × 51 mm | Símbolo On + "JOÃO FONSECA / RIO DE JANEIRO, BR" |
+
+Aqui o símbolo é desmontado: o "o" com a haste e o "n" ficam lado a lado no lugar do
+"on", na altura das letras, e o nome se lê de uma vez. A camiseta é outra modelagem
+(`tee_boxy.py`): oversized, ombro caído, algodão 240 g/m² e gola larga.
+
 ## Arquivos
 
 - `output/00-overview.png`: as duas frentes lado a lado (3200 × 2000)
 - `output/01-baseline-board.png`, `output/02-call-ended-board.png`: pranchas com frente,
   costas, cores, medidas de aplicação e detalhe da estampa (3200 × 2000)
 - `output/tee-0X-{front,back}.png`: renders isolados em PNG transparente (2400 × 2400)
+- `output/05-lifestyle-overview.png`, `output/03-shelton-lifestyle-board.png`,
+  `output/04-fonseca-lifestyle-board.png`: camisetas lifestyle com o On na horizontal
+- `output/06-lettering-horizontal.png`: folha de lettering (minúsculas e maiúsculas, Shelton e Fonseca)
 - `art/*.svg`: artes vetoriais já em curvas, em milímetros no tamanho real de impressão
+  (inclui `lockup-horizontal-*.svg`)
 
 ## Como o lettering funciona
 
@@ -45,6 +60,7 @@ Requer Python 3 (numpy, opencv-python-headless, fonttools, brotli) e Node com Pl
 ```bash
 python3 src/compose.py   # artes SVG + renders das camisetas -> art/, output/
 python3 src/board.py     # pranchas de apresentação -> output/
+python3 src/lifestyle.py # camisetas lifestyle 03/04 + lettering horizontal -> output/
 ```
 
 Pipeline: `art.py` gera os vetores (glifos convertidos em curvas com fontTools),

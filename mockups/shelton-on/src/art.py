@@ -258,6 +258,123 @@ def _match_weight(measure, target):
     return w
 
 
+# --------------------------------------------------------------------------
+# Inline ("horizontal") lockups: the On symbol is un-stacked so its o and n sit
+# side by side inside the word, each at the height of the surrounding letters.
+# The o keeps its 45 degree tab; the n is the symbol's arch.
+# --------------------------------------------------------------------------
+
+def on_inline_o(x, baseline, h, overshoot=0.03):
+    """o with tab, ring diameter = h*(1+overshoot), centred on the h band."""
+    D = h * (1 + overshoot)
+    r = D / 2
+    cx = x + r
+    cy = baseline - h / 2
+    r_in = r - ON["ring_stroke"] * D
+    ring = _circle(cx, cy, r, 1) + " " + _circle(cx, cy, r_in, 0)
+    a = math.radians(ON["tab_angle"])
+    ux, uy = math.cos(a), -math.sin(a)
+    vx, vy = math.sin(a), math.cos(a)
+    hw = ON["tab_width"] * D / 2
+    r0 = (r_in + r) / 2
+    r1 = ON["tab_end"] * D
+    tab = _poly([
+        (cx + ux * r0 - vx * hw, cy + uy * r0 - vy * hw),
+        (cx + ux * r1 - vx * hw, cy + uy * r1 - vy * hw),
+        (cx + ux * r1 + vx * hw, cy + uy * r1 + vy * hw),
+        (cx + ux * r0 + vx * hw, cy + uy * r0 + vy * hw),
+    ])
+    top = cy + uy * r1 - vy * hw
+    return ring + " " + tab, D, top
+
+
+def on_inline_n(x, baseline, h):
+    """The symbol's n (arch), height h on the baseline. Returns (path, width)."""
+    Dn = h / ON["n_height"]
+    W = ON["n_width"] * Dn
+    st = ON["n_stroke"] * Dn
+    ntop = baseline - h
+    R = W / 2
+    Ri = R - st
+    d = (f"M{x:.3f},{baseline:.3f} V{ntop + R:.3f} "
+         f"A{R:.3f},{R:.3f} 0 0 1 {x + W:.3f},{ntop + R:.3f} V{baseline:.3f} "
+         f"H{x + W - st:.3f} V{ntop + R:.3f} "
+         f"A{Ri:.3f},{Ri:.3f} 0 0 0 {x + st:.3f},{ntop + R:.3f} V{baseline:.3f} Z")
+    return d, W
+
+
+def lockup_inline(prefix, suffix, case="lower", h=100.0, tracking=None,
+                  kern_in=0.0, kern_out=0.0):
+    """
+    prefix + o + n + suffix on one line. h = x-height (lower) or cap height (upper).
+    Letter weight is matched to the symbol's n stroke.
+    kern_in / kern_out: extra space (in h) before the o / after the n.
+    """
+    n_stroke = ON["n_stroke"] / ON["n_height"]       # stroke / h
+    if case == "lower":
+        wght = _match_weight(lambda f: (glyph_bounds(f, "l")[0][2] - glyph_bounds(f, "l")[0][0])
+                             / glyph_bounds(f, "x")[0][3], n_stroke)
+        f = font(OUTFIT, wght=wght)
+        s = h / glyph_bounds(f, "x")[0][3]
+        ref_o, ref_n = "o", "n"
+        tracking = 6 if tracking is None else tracking
+    else:
+        wght = _match_weight(lambda f: (glyph_bounds(f, "I")[0][2] - glyph_bounds(f, "I")[0][0])
+                             / glyph_bounds(f, "H")[0][3], n_stroke)
+        f = font(OUTFIT, wght=wght)
+        s = h / glyph_bounds(f, "H")[0][3]
+        ref_o, ref_n = "O", "H"
+        prefix, suffix = prefix.upper(), suffix.upper()
+        tracking = 40 if tracking is None else tracking
+    tr = tracking * s
+    # side bearings borrowed from the font's own o / n so the rhythm matches
+    ob, oadv = glyph_bounds(f, ref_o)
+    nb, nadv = glyph_bounds(f, ref_n)
+    o_lsb = ob[0] * s
+    o_rsb = (oadv - ob[2]) * s
+    n_lsb = nb[0] * s
+    n_rsb = (nadv - nb[2]) * s
+    parts = {}
+    x = 0.0
+    pre_d, w = text_path(f, prefix, x, 0, s, tracking=tracking) if prefix else ("", 0.0)
+    parts["pre"] = pre_d
+    x += w + (tr if prefix else 0) + o_lsb + kern_in * h
+    o_d, D, o_top = on_inline_o(x, 0, h)
+    parts["o"] = o_d
+    o_x0 = x
+    x += D + o_rsb + tr + n_lsb
+    n_d, W = on_inline_n(x, 0, h)
+    parts["n"] = n_d
+    n_x1 = x + W
+    x += W + n_rsb + tr + kern_out * h
+    suf_d, w2 = text_path(f, suffix, x, 0, s, tracking=tracking) if suffix else ("", 0.0)
+    parts["suf"] = suf_d
+    left = glyph_bounds(f, prefix[0])[0][0] * s if prefix else 0.0
+    if suffix:
+        last = suffix[-1]
+        lb, ladv = glyph_bounds(f, last)
+        right = x + w2 - (ladv - lb[2]) * s
+    else:
+        right = x - n_rsb - tr - kern_out * h
+    # vertical extent: ascenders / tab
+    top = min(o_top, -max(glyph_bounds(f, c)[0][3] for c in (prefix + suffix) if c != " ") * s)
+    bottom = max(-min(glyph_bounds(f, c)[0][1] for c in (prefix + suffix) if c != " ") * s,
+                 (D - h) / 2)
+    return {**parts, "bbox": (left, top, right, bottom), "wght": wght, "h": h,
+            "on_span": (o_x0, n_x1)}
+
+
+def inline_group(lk, k, ink, ink_on=None):
+    l, t, _, _ = lk["bbox"]
+    ink_on = ink_on or ink
+    out = [f'<g transform="scale({k:.6f}) translate({-l:.4f},{-t:.4f})">']
+    for key, col in (("pre", ink), ("o", ink_on), ("n", ink_on), ("suf", ink)):
+        if lk.get(key):
+            out.append(f'<path d="{lk[key]}" fill="{col}"/>')
+    out.append("</g>")
+    return "".join(out)
+
+
 def fit_lockup(builder, target_width, **kw):
     """Scale a lockup so its bbox is exactly target_width wide, origin at 0,0 top-left."""
     probe = builder(**kw)
