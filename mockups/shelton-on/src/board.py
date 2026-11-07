@@ -34,24 +34,27 @@ def crop_detail(src, dst, cx_mm, cy_mm, size_mm, bg):
 
 def dims():
     """Real print dimensions (mm) computed from the artwork itself."""
-    lk = art.lockup_lower()
-    l, t, r, b = lk["bbox"]
-    d01 = (200.0, 200.0 * (b - t) / (r - l))
-    lu = art.lockup_upper()
-    l, t, r, b = lu["bbox"]
-    d02 = (276.0, 276.0 * (b - t) / (r - l))
+    p1 = compose.placed_lockup("01")
+    p2 = compose.placed_lockup("02")
+    d01 = p1["size"]
+    d02 = p2["size"]
     _, W, L = art.court_graphic("#000", width=100.0)
     _, bb = art.call_ended_graphic("#fff", "#0f0", width=262.0)
     ce = (bb[2] - bb[0], bb[3] - bb[1])
     _, wl, _ = art.tiny_text("LEFTY", "#000", cap_mm=5.2, tracking=160)
-    return {"01f": d01, "02f": d02, "court": (W, L), "call": ce, "lefty": wl}
+    return {"01f": d01, "02f": d02, "court": (W, L), "call": ce, "lefty": wl,
+            "01top": (p1["top"] - compose.HPS_Y) / 10, "02top": (p2["top"] - compose.HPS_Y) / 10,
+            "court_top": (compose.COURT_TOP - compose.HPS_Y) / 10, "call_top": (compose.CALL_TOP - compose.HPS_Y) / 10,
+            "neck_h": compose.NECK_MARK_H,
+            "01mark": p1["mark"], "02mark": p2["mark"]}
 
 
 def on_svg(color, h=None, cls="onmark"):
-    o, n, wm = art.on_mark(0, 100, 100)
+    mk = art.on_mark(0, 0, 100)
+    l, t, r, b = mk["bbox"]
     style = f' style="height:{h}"' if h else ""
-    return (f'<svg class="{cls}" viewBox="0 -1 {wm:.2f} 103" {style}>'
-            f'<path d="{o}" fill="{color}"/><path d="{n}" fill="{color}"/></svg>')
+    return (f'<svg class="{cls}" viewBox="{l:.2f} {t:.2f} {r - l:.2f} {b - t:.2f}" {style}>'
+            f'<path d="{mk["o"]}" fill="{color}"/><path d="{mk["n"]}" fill="{color}"/></svg>')
 
 
 def font_css():
@@ -83,7 +86,7 @@ header{position:absolute;left:56px;right:56px;top:44px;display:flex;justify-cont
 .subtitle{font-size:12px;margin-top:10px;color:var(--muted)}
 .meta{text-align:right;font-size:11px;line-height:1.75;color:var(--muted)}
 .meta b{color:var(--fg);font-weight:700}
-.onmark{height:15px;width:auto;vertical-align:-2px}
+.onmark{height:21px;width:auto;vertical-align:0}
 .stage{position:absolute;left:20px;top:160px;width:1180px;height:760px;display:flex;justify-content:center;gap:0}
 .view{position:relative;width:590px;height:760px}
 .view img{position:absolute;left:-55px;top:-34px;width:700px;height:700px}
@@ -111,55 +114,61 @@ footer{position:absolute;left:56px;right:56px;bottom:30px;display:flex;justify-c
 """
 
 
+def cm(v):
+    return f"{v:.1f}".replace(".", ",") + " cm"
+
+
 def concept_board(cid, d):
     c = compose.CONCEPTS[cid]
     if cid == "01":
         title = "BASELINE"
         sub = "Camiseta de treino &middot; Undyed White"
-        concept = ("Minimalismo suíço para o treino do dia a dia. O <b>shelt</b> foi desenhado no mesmo peso "
-                   "e na mesma geometria do logo On, então o “on” de Shelton vira a própria marca, sem ruído. "
-                   "Nas costas, o mapa do saque canhoto: slice aberto no lado da vantagem.")
+        concept = ("Minimalismo suíço para o treino do dia a dia. O símbolo On entra no lugar do “on”: "
+                   "o <b>n</b> vira a última letra, com o mesmo traço das outras, e o <b>o</b> sobe acima da linha "
+                   "como a bola no lançamento do saque. Nas costas, o mapa do saque canhoto: slice aberto no lado da vantagem.")
         swatches = [
             ("Undyed White", c["tee"], "Malha<br>&asymp; 11-0602 TCX"),
             ("Black", compose.INK_BLACK, "Tinta<br>&asymp; Black 6 C"),
         ]
         rows = [
-            ("Frente", f"Wordmark shelt&#8203;On &middot; {d['01f'][0]:.0f} &times; {d['01f'][1]:.0f} mm &middot; centro, 5,4 cm abaixo da gola"),
-            ("Costas", f"Mapa de quadra (escala ITF) &middot; {d['court'][0]:.0f} &times; {d['court'][1]:.0f} mm &middot; 5 cm abaixo da gola"),
+            ("Frente", f"Wordmark shelt&#8203;On &middot; {d['01f'][0]:.0f} &times; {d['01f'][1]:.0f} mm &middot; centro, topo {cm(d['01top'])} abaixo do ombro (HPS)"),
+            ("Costas", f"Mapa de quadra (escala ITF) &middot; {d['court'][0]:.0f} &times; {d['court'][1]:.0f} mm &middot; topo {cm(d['court_top'])} abaixo do ombro"),
             ("Manga E.", f"LEFTY &middot; {d['lefty']:.0f} mm, no sentido do braço"),
-            ("Nuca", "Logo On &middot; 20 mm"),
+            ("Nuca", f"Símbolo On &middot; {d['neck_h']:.0f} mm de altura"),
             ("Técnica", "Silk base d'água, toque zero"),
             ("Malha", "Poliéster reciclado 130 g/m², malha técnica respirável"),
         ]
         lab_front = ("FRENTE", "shelt + On &middot; peito")
         lab_back = ("COSTAS", "Serve map &middot; slice canhoto")
-        detail_cap = "Detalhe da estampa: tinta preta fosca acompanhando a trama e as dobras da malha."
+        detail_cap = "Detalhe: o símbolo On fechando a palavra, em tinta preta fosca que acompanha a trama da malha."
         bg, fg, muted, rule = "#E0DED8", "#141414", "#74726c", "rgba(20,20,20,.14)"
-        detail = ("01", "front", 562, 343, 84)
+        m = d["01mark"]
+        detail = ("01", "front", (m[0] + m[2]) / 2 - 6, (m[1] + m[3]) / 2, 96)
     else:
         title = "CALL ENDED."
         sub = "Camiseta de treino &middot; Black / Lime"
-        concept = ("Feita para aparecer. <b>SHELT</b> em caixa-alta branca e o On em lime, o único ponto de cor da peça. "
-                   "Nas costas, a referência à comemoração mais famosa dele: desligar o telefone "
-                   "depois de fechar o jogo.")
+        concept = ("Feita para aparecer. <b>SHELT</b> em caixa-alta branca e o símbolo On em lime, o único ponto "
+                   "de cor da peça, com o o subindo como a bola no saque. Nas costas, a referência à comemoração "
+                   "mais famosa dele: desligar o telefone depois de fechar o jogo.")
         swatches = [
             ("Black", c["tee"], "Malha<br>&asymp; 19-0303 TCX"),
             ("White", compose.INK_WHITE, "Tinta<br>branco opaco"),
             ("Lime", compose.LIME, "Tinta<br>&asymp; 380 C"),
         ]
         rows = [
-            ("Frente", f"Wordmark SHELT&#8203;On &middot; {d['02f'][0]:.0f} &times; {d['02f'][1]:.0f} mm &middot; centro, 5,8 cm abaixo da gola"),
-            ("Costas", f"CALL ENDED. &middot; {d['call'][0]:.0f} &times; {d['call'][1]:.0f} mm &middot; 4 cm abaixo da gola"),
+            ("Frente", f"Wordmark SHELT&#8203;On &middot; {d['02f'][0]:.0f} &times; {d['02f'][1]:.0f} mm &middot; centro, topo {cm(d['02top'])} abaixo do ombro (HPS)"),
+            ("Costas", f"CALL ENDED. &middot; {d['call'][0]:.0f} &times; {d['call'][1]:.0f} mm &middot; topo {cm(d['call_top'])} abaixo do ombro"),
             ("Manga E.", f"LEFTY lime &middot; {d['lefty']:.0f} mm, no sentido do braço"),
-            ("Nuca", "Logo On lime &middot; 20 mm"),
+            ("Nuca", f"Símbolo On lime &middot; {d['neck_h']:.0f} mm de altura"),
             ("Técnica", "Silk plastisol soft-hand; On lime em transfer de silicone"),
             ("Malha", "Poliéster reciclado 130 g/m², malha técnica respirável"),
         ]
         lab_front = ("FRENTE", "SHELT + On lime &middot; peito")
         lab_back = ("COSTAS", "Hang-up &middot; call ended")
-        detail_cap = "Detalhe: branco soft-hand e o On em lime, com a trama aparecendo de leve."
+        detail_cap = "Detalhe: o símbolo On em lime ao lado do branco soft-hand, com a trama aparecendo de leve."
         bg, fg, muted, rule = "#E6E4DF", "#141414", "#75736d", "rgba(20,20,20,.14)"
-        detail = ("02", "front", 597, 349, 96)
+        m = d["02mark"]
+        detail = ("02", "front", (m[0] + m[2]) / 2 - 8, (m[1] + m[3]) / 2, 120)
 
     det_png = os.path.join(BUILD, f"detail-{cid}.png")
     crop_detail(os.path.join(OUT, f"tee-{detail[0]}-{detail[1]}.png"), det_png,
@@ -212,7 +221,7 @@ def overview_board():
 .ov figcaption b{{color:var(--fg)}}
 .big{{font-family:'Outfit';font-weight:700;font-size:30px;letter-spacing:.01em}}
 </style></head><body><div class="grain"></div>
-<header><div><div class="big">Shelton &times; {on_svg(fg, '24px')}</div>
+<header><div><div class="big">Shelton &times; {on_svg(fg, '36px')}</div>
 <div class="subtitle mono">Camisetas de treino &middot; 2 conceitos</div></div>
 <div class="meta mono"><b>Ben Shelton</b><br>On Tennis &middot; Concept<br>SS27</div></header>
 <div class="ov">

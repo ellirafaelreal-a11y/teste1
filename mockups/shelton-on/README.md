@@ -5,8 +5,8 @@ substituído pelo logo da On.
 
 | | Conceito | Cor | Frente | Costas |
 | --- | --- | --- | --- | --- |
-| 01 | **Baseline** | Undyed White / tinta preta | `shelt` + On em caixa-baixa, 200 × 42 mm | Mapa de quadra em escala ITF com o slice canhoto no lado da vantagem |
-| 02 | **Call Ended.** | Black / branco + lime | `SHELT` branco + On lime, 276 × 44 mm | "CALL ENDED.", referência à comemoração de desligar o telefone |
+| 01 | **Baseline** | Undyed White / tinta preta | `shelt` + símbolo On, 190 × 73 mm | Mapa de quadra em escala ITF com o slice canhoto no lado da vantagem |
+| 02 | **Call Ended.** | Black / branco + lime | `SHELT` branco + símbolo On lime, 250 × 91 mm | "CALL ENDED.", referência à comemoração de desligar o telefone |
 
 ## Arquivos
 
@@ -18,15 +18,25 @@ substituído pelo logo da On.
 
 ## Como o lettering funciona
 
-O `shelt` usa a Outfit 700, uma fonte geométrica. Ela foi escalada para que a altura-x
-dela seja igual à altura do "n" do logo e a haste fique com a mesma espessura do anel
-do "O" (cerca de 21% do diâmetro). Assim o logo On fecha a palavra sem quebra de peso
-nem de ritmo. Na versão em caixa-alta, a altura das maiúsculas acompanha o diâmetro do "O".
+O símbolo On (o "o" com a haste a 45° empilhado sobre o "n") entra no lugar das letras
+"on" **sem nenhuma alteração**. As proporções foram medidas em quatro cópias do logo
+oficial, com variação abaixo de 1%:
 
-> **Importante:** o símbolo On deste repositório é um **redesenho** feito para a
-> apresentação (`art/on-mark-redraw.svg`). Na produção, troque pelo vetor oficial do
-> brand portal da On. É um conceito não oficial: uso comercial depende de licença da
-> On e do atleta.
+- **anel:** traço de 0,228 D, sendo D o diâmetro externo
+- **haste:** a 45°, largura de 0,241 D, terminando a 0,71 D do centro
+- **"n":** 0,967 × 0,98 D, com traço de 0,242 D
+- **vão entre o "o" e o "n":** 0,115 D
+
+A tipografia é que se adapta ao símbolo:
+- O "n" do logo fica na altura-x (ou na altura das maiúsculas) e serve de última letra da palavra.
+- O peso da Outfit é calculado para que a haste das letras tenha a mesma espessura do
+  traço do "n": wght 541 em `shelt` e 782 em `SHELT`.
+- O "o" sobe acima da linha, como a bola no lançamento do saque.
+
+> **Importante:** o símbolo deste repositório é uma **reconstrução** feita a partir de
+> imagens de referência (`art/on-mark-redraw.svg`). Na produção, troque pelo vetor
+> oficial do brand portal da On. É um conceito não oficial: uso comercial depende de
+> licença da On e do atleta.
 
 ## Como regerar
 

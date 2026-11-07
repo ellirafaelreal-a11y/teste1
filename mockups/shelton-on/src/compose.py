@@ -67,45 +67,69 @@ def print_svg(concept, view):
     x0, y0, w0, h0 = tee.VB
     g = []
     if concept == "01" and view == "front":
-        lk = art.lockup_lower()
-        l, t, r, b = lk["bbox"]
-        W = 200.0
-        k = W / (r - l)
-        g.append(f'<g transform="translate({500 - W/2:.3f},322)">{art.lockup_group(lk, k, lk["bbox"], INK_BLACK)}</g>')
+        g.append(placed_lockup("01")["svg"])
         g.append(sleeve_hit("LEFTY", INK_BLACK))
     elif concept == "01" and view == "back":
         g.append(neck_mark(INK_BLACK))
         body, W, L = art.court_graphic(INK_BLACK, width=100.0)
-        top = 262
+        top = COURT_TOP
         g.append(f'<g transform="translate({500 - W/2:.3f},{top})">{body}</g>')
         d, w, _ = art.tiny_text("SERVE MAP / B. SHELTON", INK_BLACK, cap_mm=3.4, tracking=110)
         g.append(f'<path transform="translate({500 - w/2:.3f},{top + L + 24:.3f})" d="{d}" fill="{INK_BLACK}"/>')
     elif concept == "02" and view == "front":
-        lu = art.lockup_upper()
-        l, t, r, b = lu["bbox"]
-        W = 276.0
-        k = W / (r - l)
-        g.append(f'<g transform="translate({500 - W/2:.3f},326)">{art.lockup_group(lu, k, lu["bbox"], INK_WHITE, LIME)}</g>')
+        g.append(placed_lockup("02")["svg"])
         g.append(sleeve_hit("LEFTY", LIME))
     elif concept == "02" and view == "back":
         g.append(neck_mark(LIME))
         body, bb = art.call_ended_graphic(INK_WHITE, LIME, width=262.0)
         l, t, r, b = bb
-        g.append(f'<g transform="translate({500 - (r-l)/2:.3f},{252 - t:.3f})">{body}</g>')
+        g.append(f'<g transform="translate({500 - (r-l)/2:.3f},{CALL_TOP - t:.3f})">{body}</g>')
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {w0} {h0}">'
         f'{"".join(g)}</svg>'
     )
 
 
-def neck_mark(ink):
-    o, n, wm = art.on_mark(0, 0, 13.0)
-    W = 20.0
-    k = W / wm
-    return (
-        f'<g transform="translate({500 - W/2:.3f},{230:.3f}) scale({k:.4f})">'
-        f'<path d="{o}" fill="{ink}"/><path d="{n}" fill="{ink}"/></g>'
-    )
+NECK_MARK_H = 18.0
+HPS_Y = 180.0       # high point shoulder, tee coordinates
+COURT_TOP = 274.0
+CALL_TOP = 282.0
+
+
+LOCKUPS = {
+    # width (mm), top of the artwork (mm, tee coordinates), builder, inks
+    "01": {"width": 190.0, "top": 298.0, "build": art.lockup_lower, "ink": INK_BLACK, "ink_on": INK_BLACK},
+    "02": {"width": 250.0, "top": 276.0, "build": art.lockup_upper, "ink": INK_WHITE, "ink_on": LIME},
+}
+NECKLINE_Y = 268.0  # centre-front neckline (collar seam), tee coordinates
+
+
+def placed_lockup(cid):
+    cfg = LOCKUPS[cid]
+    lk = cfg["build"]()
+    l, t, r, b = lk["bbox"]
+    k = cfg["width"] / (r - l)
+    ox = 500 - cfg["width"] / 2
+    oy = cfg["top"]
+    ml, mt, mr, mb = lk["mark_bbox"]
+    tr = lambda X, Y: (ox + (X - l) * k, oy + (Y - t) * k)  # noqa: E731
+    m0 = tr(ml, mt)
+    m1 = tr(mr, mb)
+    return {
+        "svg": f'<g transform="translate({ox:.3f},{oy:.3f})">'
+               f'{art.lockup_group(lk, k, lk["bbox"], cfg["ink"], cfg["ink_on"])}</g>',
+        "size": (cfg["width"], (b - t) * k),
+        "top": oy,
+        "mark": (m0[0], m0[1], m1[0], m1[1]),
+        "wght": lk["wght"],
+    }
+
+
+def neck_mark(ink, top=228.0, body=NECK_MARK_H):
+    D = body / art.ON_BODY
+    mk = art.on_mark(500 - D / 2, top + body, body)
+    return f'<path d="{mk["o"]}" fill="{ink}"/><path d="{mk["n"]}" fill="{ink}"/>'
+
 
 
 def sleeve_hit(txt, ink):
@@ -123,15 +147,13 @@ def neck_label_svg(concept):
     """Printed care label inside the back neck (front view only)."""
     ink = CONCEPTS[concept]["label_ink"]
     x0, y0, w0, h0 = tee.VB
-    o, n, wm = art.on_mark(0, 0, 9.0)
-    k = 14.0 / wm
-    d, w, _ = art.tiny_text("M", ink, cap_mm=4.0, tracking=0)
-    d2, w2, _ = art.tiny_text("ON TENNIS", ink, cap_mm=1.8, tracking=120)
+    d, w, _ = art.tiny_text("M", ink, cap_mm=3.6, tracking=0)
+    d2, w2, _ = art.tiny_text("ON TENNIS", ink, cap_mm=1.7, tracking=120)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {w0} {h0}">'
-        f'<g transform="translate({500 - 7:.3f},{197:.3f}) scale({k:.4f})"><path d="{o}" fill="{ink}"/><path d="{n}" fill="{ink}"/></g>'
-        f'<path transform="translate({500 - w/2:.3f},{211:.3f})" d="{d}" fill="{ink}"/>'
-        f'<path transform="translate({500 - w2/2:.3f},{217:.3f})" d="{d2}" fill="{ink}"/>'
+        f'{neck_mark(ink, top=189.5, body=11.0)}'
+        f'<path transform="translate({500 - w/2:.3f},{210:.3f})" d="{d}" fill="{ink}"/>'
+        f'<path transform="translate({500 - w2/2:.3f},{215.5:.3f})" d="{d2}" fill="{ink}"/>'
         f"</svg>"
     )
 

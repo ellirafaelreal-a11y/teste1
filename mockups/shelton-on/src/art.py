@@ -85,88 +85,177 @@ def text_width(f, text, scale, tracking=0.0):
 
 
 # --------------------------------------------------------------------------
-# On mark (redraw). Geometry expressed relative to the O diameter `D`.
+# On mark: stacked "o over n" symbol, reconstructed from reference images.
+# All proportions are relative to the ring's outer diameter D and were measured
+# on four independent copies of the logo (spread < 1 %).
 # --------------------------------------------------------------------------
 
-def ring_with_gap(cx, cy, r_out, r_in, gap_from_deg, gap_to_deg):
-    """Annulus with an angular gap. Angles in maths convention (y up)."""
-    def pt(r, deg):
-        a = math.radians(deg)
-        return cx + r * math.cos(a), cy - r * math.sin(a)
-
-    # draw the arc from gap_to (counter-clockwise) all the way round to gap_from
-    a0, a1 = gap_to_deg, gap_from_deg + 360
-    sweep = a1 - a0
-    large = 1 if sweep > 180 else 0
-    p0 = pt(r_out, a0)
-    p1 = pt(r_out, a1)
-    q1 = pt(r_in, a1)
-    q0 = pt(r_in, a0)
-    return (
-        f"M{p0[0]:.3f},{p0[1]:.3f} "
-        f"A{r_out:.3f},{r_out:.3f} 0 {large} 0 {p1[0]:.3f},{p1[1]:.3f} "
-        f"L{q1[0]:.3f},{q1[1]:.3f} "
-        f"A{r_in:.3f},{r_in:.3f} 0 {large} 1 {q0[0]:.3f},{q0[1]:.3f} Z"
-    )
+ON = {
+    "ring_stroke": 0.228,   # radial thickness of the o
+    "tab_width": 0.241,     # the 45 degree stem
+    "tab_angle": 45.0,      # degrees, up-right
+    "tab_end": 0.710,       # distance from ring centre to the tab's square end
+    "gap": 0.115,           # o -> n vertical gap
+    "n_width": 0.967,
+    "n_height": 0.980,
+    "n_stroke": 0.242,
+}
+ON_BODY = 1 + ON["gap"] + ON["n_height"]      # ring top -> n bottom, in D
+ON_STROKE = (ON["ring_stroke"] + ON["n_stroke"]) / 2
 
 
-def on_mark(x, baseline, D, f_n=None, n_scale=None):
+def _circle(cx, cy, r, sweep):
+    return (f"M{cx - r:.3f},{cy:.3f} A{r:.3f},{r:.3f} 0 1 {sweep} {cx + r:.3f},{cy:.3f} "
+            f"A{r:.3f},{r:.3f} 0 1 {sweep} {cx - r:.3f},{cy:.3f} Z")
+
+
+def _poly(pts):
+    # orient polygon clockwise on screen (same winding as the outer circle)
+    area = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1]
+               for i in range(len(pts)))
+    if area < 0:
+        pts = pts[::-1]
+    return "M" + " L".join(f"{x:.3f},{y:.3f}" for x, y in pts) + " Z"
+
+
+def on_mark(x, baseline, body_h):
     """
-    Returns (o_path, n_path, total_width).
-    x: left edge of the O. baseline: y of the baseline (y-down).
-    D: outer diameter of the O.
+    Stacked On symbol. `x` = left edge of the ring/n column, `baseline` = bottom
+    of the n (y-down), `body_h` = ring top -> n bottom.
+    Returns dict(o=path, n=path, D=..., width=column width, bbox=(l,t,r,b)).
+    The tab is allowed to overhang the column to the upper right.
     """
-    f_n = f_n or font(OUTFIT, wght=700)
-    stroke = D * 0.219
-    r_out = D / 2
-    r_in = r_out - stroke
-    cx = x + r_out
-    cy = baseline - r_out + D * 0.012  # tiny overshoot below baseline
-    o = ring_with_gap(cx, cy, r_out, r_in, 32, 64)
-    # n: x-height = 0.655 * D, sitting on the baseline
-    if n_scale is None:
-        n_scale = (D * 0.655) / 486.0
-    (nb, nadv) = glyph_bounds(f_n, "n")
-    gap = D * 0.085
-    nx = x + D + gap - nb[0] * n_scale
-    n_d, _ = glyph_path(f_n, "n", nx, baseline, n_scale)
-    total = (nx + nb[2] * n_scale) - x
-    return o, n_d, total
+    D = body_h / ON_BODY
+    r = D / 2
+    cx = x + r
+    top = baseline - body_h
+    cy = top + r
+    r_in = r - ON["ring_stroke"] * D
+    ring = _circle(cx, cy, r, 1) + " " + _circle(cx, cy, r_in, 0)
+    a = math.radians(ON["tab_angle"])
+    ux, uy = math.cos(a), -math.sin(a)          # along the tab (screen coords)
+    vx, vy = math.sin(a), math.cos(a)           # across the tab
+    hw = ON["tab_width"] * D / 2
+    r0 = (r_in + r) / 2                          # starts inside the ring's stroke
+    r1 = ON["tab_end"] * D
+    tab = _poly([
+        (cx + ux * r0 - vx * hw, cy + uy * r0 - vy * hw),
+        (cx + ux * r1 - vx * hw, cy + uy * r1 - vy * hw),
+        (cx + ux * r1 + vx * hw, cy + uy * r1 + vy * hw),
+        (cx + ux * r0 + vx * hw, cy + uy * r0 + vy * hw),
+    ])
+    o = ring + " " + tab
+    W = ON["n_width"] * D
+    st = ON["n_stroke"] * D
+    nx0 = cx - W / 2
+    ntop = baseline - ON["n_height"] * D
+    R = W / 2
+    Ri = R - st
+    n = (f"M{nx0:.3f},{baseline:.3f} V{ntop + R:.3f} "
+         f"A{R:.3f},{R:.3f} 0 0 1 {nx0 + W:.3f},{ntop + R:.3f} V{baseline:.3f} "
+         f"H{nx0 + W - st:.3f} V{ntop + R:.3f} "
+         f"A{Ri:.3f},{Ri:.3f} 0 0 0 {nx0 + st:.3f},{ntop + R:.3f} V{baseline:.3f} Z")
+    tab_top = cy + uy * r1 - vy * hw              # top-most corner
+    tab_right = cx + ux * r1 + vx * hw            # right-most corner
+    return {"o": o, "n": n, "D": D, "width": D, "stroke": ON_STROKE * D,
+            "bbox": (x, tab_top, max(tab_right, x + D), baseline)}
+
+
+_weight_cache = {}
+
+
+def outfit_weight_for(stem_ratio, ref="I", ref_h=706.0):
+    """Find the Outfit weight whose `ref` stem / ref_h equals stem_ratio."""
+    key = (round(stem_ratio, 4), ref)
+    if key in _weight_cache:
+        return _weight_cache[key]
+    lo, hi = 100.0, 900.0
+    for _ in range(14):
+        mid = (lo + hi) / 2
+        b, _ = glyph_bounds(font(OUTFIT, wght=round(mid, 1)), ref)
+        if (b[2] - b[0]) / ref_h < stem_ratio:
+            lo = mid
+        else:
+            hi = mid
+    w = round((lo + hi) / 2, 1)
+    _weight_cache[key] = w
+    return w
 
 
 # --------------------------------------------------------------------------
-# Lockups
+# Lockups: the On symbol takes the place of the letters "on". It is used
+# unaltered; the type is drawn to match it (same stroke, aligned heights).
 # --------------------------------------------------------------------------
 
-def lockup_lower(x=0, baseline=0, xh=64.0):
-    """'shelt' + On mark, lowercase. xh = x-height in output units."""
-    f = font(OUTFIT, wght=700)
-    s = xh / 486.0
-    shelt, w = text_path(f, "shelt", x, baseline, s, tracking=-6)
-    D = xh / 0.655
-    # optical spacing between t and O
-    ox = x + w + D * 0.06
-    o, n, wm = on_mark(ox, baseline, D, f, s)
+def lockup_lower(x=0, baseline=0, xh=100.0, mode="serve"):
+    """
+    'shelt' + On symbol.
+    mode "serve": the symbol's n has the x-height and the letters take the
+    n's stroke, so the o rises above the word like a ball toss.
+    mode "fit": the whole symbol fits baseline -> ascender (letters thin).
+    """
+    f0 = font(OUTFIT, wght=700)
+    if mode == "serve":
+        D = xh / ON["n_height"]
+        body = D * ON_BODY
+        # letters: stem of 'l' == n stroke ; x-height of 'x' == xh
+        target = ON["n_stroke"] * D / xh          # stem / x-height
+        wght = _match_weight(lambda f: (glyph_bounds(f, "l")[0][2] - glyph_bounds(f, "l")[0][0])
+                             / glyph_bounds(f, "x")[0][3], target)
+    else:
+        wght = 355.3
+    f = font(OUTFIT, wght=wght)
+    s = xh / glyph_bounds(f, "x")[0][3]
+    if mode != "serve":
+        asc = glyph_bounds(f, "l")[0][3] * s
+        body = asc
+        D = body / ON_BODY
+    shelt, w = text_path(f, "shelt", x, baseline, s, tracking=10)
+    mx = x + w + D * 0.16
+    mk = on_mark(mx, baseline, body)
     left = x + glyph_bounds(f, "s")[0][0] * s
-    right = ox + wm
-    top = baseline - D * 0.988
-    bottom = baseline + D * 0.012
-    return {"shelt": shelt, "o": o, "n": n, "bbox": (left, top, right, bottom)}
+    l, t, r, b = mk["bbox"]
+    return {"shelt": shelt, "o": mk["o"], "n": mk["n"], "wght": wght,
+            "bbox": (left, t, r, b), "xh": xh, "D": D, "mark_bbox": mk["bbox"]}
 
 
-def lockup_upper(x=0, baseline=0, cap=70.0, tracking=34):
-    """'SHELT' + On mark, uppercase. cap = cap height in output units."""
-    f = font(OUTFIT, wght=700)
-    s = cap / 706.0
+def lockup_upper(x=0, baseline=0, cap=100.0, tracking=60, mode="serve"):
+    """'SHELT' + On symbol (see lockup_lower for the modes)."""
+    if mode == "serve":
+        D = cap / ON["n_height"]
+        body = D * ON_BODY
+        target = ON["n_stroke"] * D / cap
+        wght = _match_weight(lambda f: (glyph_bounds(f, "I")[0][2] - glyph_bounds(f, "I")[0][0])
+                             / glyph_bounds(f, "H")[0][3], target)
+    else:
+        wght = 327.5
+        body = cap
+        D = cap / ON_BODY
+    f = font(OUTFIT, wght=wght)
+    s = cap / glyph_bounds(f, "H")[0][3]
     shelt, w = text_path(f, "SHELT", x, baseline, s, tracking=tracking)
-    D = cap / 0.976
-    ox = x + w + tracking * s + D * 0.03
-    o, n, wm = on_mark(ox, baseline, D, f, (D * 0.655) / 486.0)
+    mx = x + w + tracking * s + D * 0.10
+    mk = on_mark(mx, baseline, body)
     left = x + glyph_bounds(f, "S")[0][0] * s
-    right = ox + wm
-    top = baseline - D * 0.988
-    bottom = baseline + D * 0.012
-    return {"shelt": shelt, "o": o, "n": n, "bbox": (left, top, right, bottom)}
+    l, t, r, b = mk["bbox"]
+    return {"shelt": shelt, "o": mk["o"], "n": mk["n"], "wght": wght,
+            "bbox": (left, t, r, b), "cap": cap, "D": D, "mark_bbox": mk["bbox"]}
+
+
+def _match_weight(measure, target):
+    key = (measure.__code__.co_code, measure.__code__.co_consts, round(target, 4))
+    if key in _weight_cache:
+        return _weight_cache[key]
+    lo, hi = 100.0, 900.0
+    for _ in range(14):
+        mid = (lo + hi) / 2
+        if measure(font(OUTFIT, wght=round(mid, 1))) < target:
+            lo = mid
+        else:
+            hi = mid
+    w = round((lo + hi) / 2, 1)
+    _weight_cache[key] = w
+    return w
 
 
 def fit_lockup(builder, target_width, **kw):
@@ -363,7 +452,7 @@ def export_all():
         ("lockup-lowercase-black", "#111111", "#111111", None),
         ("lockup-lowercase-white", "#F4F4F2", "#F4F4F2", None),
     ]:
-        W = 200.0
+        W = 190.0
         k = W / (r - l)
         H = (b - t) * k
         out[name] = svg_doc(W, H, lockup_group(lk, k, lk["bbox"], ink, inkon), bg)
@@ -374,14 +463,15 @@ def export_all():
         ("lockup-uppercase-white-lime", "#F4F4F2", "#D4F53C"),
         ("lockup-uppercase-black", "#111111", "#111111"),
     ]:
-        W = 260.0
+        W = 250.0
         k = W / (r - l)
         H = (b - t) * k
         out[name] = svg_doc(W, H, lockup_group(lu, k, lu["bbox"], ink, inkon))
 
     # On mark alone
-    o, n, wm = on_mark(0, 100, 100)
-    out["on-mark-redraw"] = svg_doc(wm, 101.2, f'<path d="{o}" fill="#111"/><path d="{n}" fill="#111"/>')
+    mk = on_mark(0, 0, 100)
+    l, t, r, b = mk["bbox"]
+    out["on-mark-redraw"] = svg_doc(r - l, b - t, f'<g transform="translate({-l:.3f},{-t:.3f})"><path d="{mk["o"]}" fill="#111"/><path d="{mk["n"]}" fill="#111"/></g>')
 
     body, W, L = court_graphic("#111111")
     pad = 12
