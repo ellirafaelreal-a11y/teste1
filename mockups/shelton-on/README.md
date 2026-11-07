@@ -52,3 +52,13 @@ Pipeline: `art.py` gera os vetores (glifos convertidos em curvas com fontTools),
 `shot.mjs` rasteriza no Chromium e `compose.py` faz o sombreamento em espaço linear:
 volume por distância à borda, oclusão nas axilas, brilho no tecido preto e trama de malha.
 A estampa é deslocada pelo relevo das dobras e recebe a mesma luz do tecido.
+
+## Foto de campanha (IA)
+
+`higgsfield/hf-02-campaign.png` é uma foto de campanha do conceito 02 (1856 × 2304), gerada
+na Higgsfield com o modelo Nano Banana 2.1. As referências enviadas estão em
+`higgsfield/refs/`: o render da camiseta e a arte vetorial do nome.
+
+O atleta é anônimo e aparece enquadrado sem o rosto. A IA reproduziu bem o nome e o
+símbolo, mas deixou o traço do símbolo um pouco mais fino que o original. Use a foto
+como imagem de clima; para aplicação exata do logo, valem as artes em `art/`.
