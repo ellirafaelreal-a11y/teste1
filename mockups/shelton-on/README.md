@@ -19,6 +19,17 @@ Aqui o símbolo é desmontado: o "o" com a haste e o "n" ficam lado a lado no lu
 "on", na altura das letras, e o nome se lê de uma vez. A camiseta é outra modelagem
 (`tee_boxy.py`): oversized, ombro caído, algodão 240 g/m² e gola larga.
 
+### Lettering vertical (a partir da referência)
+
+| | Atleta | Cor | Costas | Frente |
+| --- | --- | --- | --- | --- |
+| 07 | **FONSECA** | Heather grey (mescla) / preto | F · o · n · S · E · C · A em coluna, 43 × 449 mm | FONSECA com On horizontal, 78 mm, peito esquerdo |
+| 08 | **SHELTON** | Preto / ecru | S · H · E · L · T · o · n em coluna | SHELTON com On horizontal, 78 mm, peito esquerdo |
+
+Com o nome escrito de cima para baixo, o símbolo On entra inteiro e na ordem original,
+o "o" em cima e o "n" embaixo. O "o" e o "n" seguem o mesmo tamanho e o mesmo
+espaçamento das letras da coluna.
+
 ## Arquivos
 
 - `output/00-overview.png`: as duas frentes lado a lado (3200 × 2000)
@@ -29,7 +40,9 @@ Aqui o símbolo é desmontado: o "o" com a haste e o "n" ficam lado a lado no lu
   `output/04-fonseca-lifestyle-board.png`: camisetas lifestyle com o On na horizontal
 - `output/06-lettering-horizontal.png`: folha de lettering (minúsculas e maiúsculas, Shelton e Fonseca)
 - `art/*.svg`: artes vetoriais já em curvas, em milímetros no tamanho real de impressão
-  (inclui `lockup-horizontal-*.svg`)
+  (inclui `lockup-horizontal-*.svg` e `lockup-vertical-*.svg`)
+- `output/09-vertical-overview.png`, `output/07-fonseca-vertical-board.png`,
+  `output/08-shelton-vertical-board.png`: lettering vertical nas costas
 
 ## Como o lettering funciona
 
@@ -61,6 +74,7 @@ Requer Python 3 (numpy, opencv-python-headless, fonttools, brotli) e Node com Pl
 python3 src/compose.py   # artes SVG + renders das camisetas -> art/, output/
 python3 src/board.py     # pranchas de apresentação -> output/
 python3 src/lifestyle.py # camisetas lifestyle 03/04 + lettering horizontal -> output/
+python3 src/vertical.py  # camisetas 07/08 com lettering vertical -> output/
 ```
 
 Pipeline: `art.py` gera os vetores (glifos convertidos em curvas com fontTools),

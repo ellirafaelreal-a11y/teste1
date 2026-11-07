@@ -304,6 +304,12 @@ def composite(concept, view, M, prints):
     col = alb[None, None, :] * D[..., None] + (cfg["spec"] * S)[..., None]
     col += (cfg["fresnel"] * (1 - rim) * sil)[..., None]
     col *= (1 + 0.018 * tex)[..., None]
+    if cfg.get("heather"):
+        # melange yarn: short vertical fibre streaks of lighter / darker yarn
+        rng = np.random.default_rng(97 if view == "front" else 98)
+        hn = cv2.GaussianBlur(rng.standard_normal((N, N)).astype(np.float32), (0, 0), sigmaX=0.9, sigmaY=5.0)
+        hn /= hn.std() + 1e-6
+        col *= (1 + cfg["heather"] * hn)[..., None]
 
     # ---- prints: displaced by the fold relief, lit by the same light ----
     relief = cv2.GaussianBlur(M["folds"], (0, 0), 5)

@@ -375,6 +375,61 @@ def inline_group(lk, k, ink, ink_on=None):
     return "".join(out)
 
 
+# --------------------------------------------------------------------------
+# Vertical lockups: letters stacked top to bottom, so the On symbol's o and n
+# keep their natural stacked order. Each glyph is centred on the vertical axis
+# and the o / n take the same size and pitch as the letters.
+# --------------------------------------------------------------------------
+
+ON_O, ON_N = "\u24DE", "\u24DD"   # placeholder tokens for the symbol parts
+
+
+def lockup_vertical(tokens, h=100.0, pitch=1.8):
+    """tokens: e.g. ["F", ON_O, ON_N, "S", "E", "C", "A"]. h = cap height.
+    Returns dict(letters=path, on=path, bbox, wght, centers)."""
+    n_stroke = ON["n_stroke"] / ON["n_height"]
+    wght = _match_weight(lambda f: (glyph_bounds(f, "I")[0][2] - glyph_bounds(f, "I")[0][0])
+                         / glyph_bounds(f, "H")[0][3], n_stroke)
+    f = font(OUTFIT, wght=wght)
+    s = h / glyph_bounds(f, "H")[0][3]
+    letters, on = [], []
+    xs = []
+    for i, tk in enumerate(tokens):
+        base = i * pitch * h + h          # baseline of this row (first row top at y=0)
+        if tk == ON_O:
+            D = h * 1.03
+            d, D, _ = on_inline_o(-D / 2, base, h)
+            on.append(d)
+            xs.append((-D / 2, D / 2 + 0.087 * D))
+        elif tk == ON_N:
+            W = ON["n_width"] * h / ON["n_height"]
+            d, W = on_inline_n(-W / 2, base, h)
+            on.append(d)
+            xs.append((-W / 2, W / 2))
+        else:
+            b, _ = glyph_bounds(f, tk)
+            cx = (b[0] + b[2]) / 2 * s
+            d, _ = glyph_path(f, tk, -cx, base, s)
+            letters.append(d)
+            xs.append((b[0] * s - cx, b[2] * s - cx))
+    left = min(a for a, _ in xs)
+    right = max(b for _, b in xs)
+    # the o's tab pokes above its row; include it in the bbox
+    top = 0.0
+    if tokens and tokens[0] == ON_O:
+        top = -0.09 * h
+    bottom = (len(tokens) - 1) * pitch * h + h * 1.02
+    return {"letters": " ".join(letters), "on": " ".join(on), "bbox": (left, top, right, bottom),
+            "wght": wght, "h": h, "pitch": pitch}
+
+
+def vertical_group(lk, k, ink, ink_on=None, cx=0.0, top=0.0):
+    """Place a vertical lockup with its axis at x=cx and its first row top at y=top."""
+    ink_on = ink_on or ink
+    return (f'<g transform="translate({cx:.3f},{top:.3f}) scale({k:.6f})">'
+            f'<path d="{lk["letters"]}" fill="{ink}"/><path d="{lk["on"]}" fill="{ink_on}"/></g>')
+
+
 def fit_lockup(builder, target_width, **kw):
     """Scale a lockup so its bbox is exactly target_width wide, origin at 0,0 top-left."""
     probe = builder(**kw)
